@@ -16,7 +16,6 @@
 import {html, render, Component} from "../lib/htm/preact.js"
 import {Spinner} from "./spinner.js"
 import {SearchBox} from "./search-box.js"
-import {giphyIsEnabled, GiphySearchTab, setGiphyAPIKey} from "./giphy.js"
 import * as widgetAPI from "./widget-api.js"
 import * as frequent from "./frequently-used.js"
 
@@ -51,7 +50,6 @@ class App extends Component {
 		super(props)
 		this.defaultTheme = params.get("theme")
 		this.state = {
-			viewingGifs: false,
 			packs: defaultState.packs,
 			loading: true,
 			error: null,
@@ -163,9 +161,6 @@ class App extends Component {
 				return
 			}
 			const indexData = await indexRes.json()
-			if (indexData.giphy_api_key !== undefined) {
-				setGiphyAPIKey(indexData.giphy_api_key, indexData.giphy_mxc_prefix)
-			}
 			// TODO only load pack metadata when scrolled into view?
 			for (const packFile of indexData.packs) {
 				let packRes
@@ -296,38 +291,22 @@ class App extends Component {
 			`
 		}
 
-		const onClickOverride = this.state.viewingGifs
-			? (evt, packID) => {
-				evt.preventDefault()
-				this.setState({viewingGifs: false}, () => {
-					scrollToSection(null, packID)
-				})
-			} : null
-		const switchToGiphy = () => this.setState({viewingGifs: true, filtering: defaultState.filtering})
-
 		return html`
 			<main class="has-content ${theme}">
 				<nav onWheel=${this.navScroll} ref=${elem => this.navRef = elem}>
-					${giphyIsEnabled() && html`
-						<${NavBarItem} pack=${{id: "giphy", title: "GIPHY"}} iconOverride="giphy" onClickOverride=${switchToGiphy} extraClass=${this.state.viewingGifs ? "visible" : ""}/>
-					`}
-					<${NavBarItem} pack=${this.state.frequentlyUsed} iconOverride="recent" onClickOverride=${onClickOverride}/>
-					${this.state.packs.map(pack => html`<${NavBarItem} id=${pack.id} pack=${pack} onClickOverride=${onClickOverride}/>`)}
-					<${NavBarItem} pack=${{id: "settings", title: "Settings"}} iconOverride="settings" onClickOverride=${onClickOverride}/>
+					<${NavBarItem} pack=${this.state.frequentlyUsed} iconOverride="recent" />
+					${this.state.packs.map(pack => html`<${NavBarItem} id=${pack.id} pack=${pack} />`)}
+					<${NavBarItem} pack=${{id: "settings", title: "Settings"}} iconOverride="settings" />
 				</nav>
 
-				${this.state.viewingGifs ? html`
-					<${GiphySearchTab}/>
-				` : html`
-					<${SearchBox} onInput=${this.searchStickers} value=${this.state.filtering.searchTerm ?? ""}/>
-					<div class="pack-list ${isMobileSafari ? "ios-safari-hack" : ""}" ref=${(elem) => (this.packListRef = elem)}>
-						${filterActive && packs.length === 0
-							? html`<div class="search-empty"><h1>No stickers match your search</h1></div>`
-							: null}
-						${packs.map((pack) => html`<${Pack} id=${pack.id} pack=${pack} send=${this.sendSticker}/>`)}
-						<${Settings} app=${this}/>
-					</div>
-				`}
+				<${SearchBox} onInput=${this.searchStickers} value=${this.state.filtering.searchTerm ?? ""}/>
+				<div class="pack-list ${isMobileSafari ? "ios-safari-hack" : ""}" ref=${(elem) => (this.packListRef = elem)}>
+					${filterActive && packs.length === 0
+						? html`<div class="search-empty"><h1>No stickers match your search</h1></div>`
+						: null}
+					${packs.map((pack) => html`<${Pack} id=${pack.id} pack=${pack} send=${this.sendSticker}/>`)}
+					<${Settings} app=${this}/>
+				</div>
 			</main>`
 	}
 }
@@ -366,9 +345,9 @@ const scrollToSection = (evt, id) => {
 	evt?.preventDefault()
 }
 
-const NavBarItem = ({pack, iconOverride = null, onClickOverride = null, extraClass = null}) => html`
+const NavBarItem = ({pack, iconOverride = null, extraClass = null}) => html`
 	<a href="#pack-${pack.id}" id="nav-${pack.id}" data-pack-id=${pack.id} title=${pack.title} class="${extraClass}"
-	   onClick=${onClickOverride ? (evt => onClickOverride(evt, pack.id)) : (isMobileSafari ? (evt => scrollToSection(evt, pack.id)) : undefined)}>
+	   onClick=${isMobileSafari ? (evt => scrollToSection(evt, pack.id)) : undefined}>
 		<div class="sticker">
 			${iconOverride ? html`
 				<span class="icon icon-${iconOverride}"/>
