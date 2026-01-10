@@ -1,0 +1,6 @@
+{
+  "packs": [
+    "Snezko.json"
+  ],
+  "homeserver_url": "https://matrix.sdsforge.com"
+}
